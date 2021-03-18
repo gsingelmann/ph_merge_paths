@@ -1,11 +1,27 @@
-﻿main();
+﻿// ------------------------------------------------------------------------------------------------------------------
+//  merge-paths.jsx
+//Description:Takes 2 Photoshop Paths and merges them into a new one
+// [Ver. 1]  
+// [Autor: Gerald Singelmann. ] 
+// [Lang: DE]  
+// [Getestet mit: Photoshop 22.3]  
+// [Creat: 21-03-17]  
+// Bugs & Feedback : gs@cuppascript.com
+// www.cuppascript.com
+// ------------------------------------------------------------------------------------------------------------------
+
+main();
 
 function main() {
+  // --------------------------------------------------------------------------
+  //  No doc or no paths? Nothing to do
   if ( app.documents.length == 0 ) return;
   var doc = app.activeDocument;
 
   if ( doc.pathItems.length < 2 ) return;
 
+  // --------------------------------------------------------------------------
+  //  AFAIK new paths are always created with pt as measurement
   var rulerunits = app.preferences.rulerUnits;
   app.preferences.rulerUnits = Units.POINTS;
 
@@ -16,6 +32,10 @@ function main() {
       path1 = doc.pathItems[0];
       path2 = doc.pathItems[1];
     } else {
+      // --------------------------------------------------------------------------
+      //  More than two paths. Currently this script works on exactly two
+      //  -> you need to choose
+      //  Peter Kahrel's ScriptUI Guide: https://creativepro.com/files/kahrel/indesign/scriptui.html
       var names = [], paths = [];
       var w = new Window("dialog");
       w.orientation = "row";
@@ -24,30 +44,27 @@ function main() {
       w.main.alignChildren = ["left", "top"];
       w.main.margins[2] = 20;
       w.cbs = [];
-      var actives = [];
+      var checked = [];
       for ( var n = 0; n < doc.pathItems.length; n++ ) {
         w.cbs.push( w.main.add("checkbox", undefined, doc.pathItems[n].name));
         if ( n == 0 || n == 1 ) {
           w.cbs[ w.cbs.length-1 ].value = true;
-          actives.push( n );
+          checked.push( n );
         }
         w.cbs[ w.cbs.length-1 ].ix = n;
         w.cbs[ w.cbs.length-1 ].onClick = function() {
           if ( this.value ) {
-            if ( actives.length == 0 ) {
-              actives.push( this.ix );
-            } else if ( actives.length == 1 ) {
-              actives.push( this.ix );
+            if ( checked.length == 0 ) {
+              checked.push( this.ix );
+            } else if ( checked.length == 1 ) {
+              checked.push( this.ix );
             } else {
-              $.write( actives[0] + " -> " );
-              w.cbs[ actives[0] ].value = false;
-              actives.shift();
-              actives.push( this.ix );
+              w.cbs[ checked[0] ].value = false;
+              checked.shift();
+              checked.push( this.ix );
             }
-            $.writeln( this.ix + " / " + actives.toSource());
           } else {
-            for ( var n = actives.length -1; n >= 0; n-- ) if ( actives[n] == this.ix ) actives.splice(n,1);
-            $.writeln( actives.toSource());
+            for ( var n = checked.length -1; n >= 0; n-- ) if ( checked[n] == this.ix ) checked.splice(n,1);
           }
         }
 
@@ -58,11 +75,15 @@ function main() {
       w.defaultElement = w.btns.add("button", undefined, "OK")
       w.cancelElement = w.btns.add("button", undefined, "Abbrechen")
       var rs = w.show();
-      // alert( rs + ", " + actives.toSource());
-      if ( rs == 2 || actives.length != 2 ) return;
-      path1 = doc.pathItems[ actives[0] ];
-      path2 = doc.pathItems[ actives[1] ];
+      // alert( rs + ", " + checked.toSource());
+      if ( rs == 2 || checked.length != 2 ) return;
+      path1 = doc.pathItems[ checked[0] ];
+      path2 = doc.pathItems[ checked[1] ];
     }
+
+    // --------------------------------------------------------------------------
+    //  Now we have two paths in path1 and path2. Ready to merge
+    //  To create a new path: Collect Arrays of PathPointInfo in an Array of SubPathInfo
 
     var subpaths = [];
 
@@ -90,6 +111,9 @@ function main() {
       }  // subpath loop
     }    // path loop
 
+    // --------------------------------------------------------------------------
+    //  If you have two paths of one subpath each, how should the paths be combined?
+    //  XOR seems to be a common sense default
     if ( subpaths.length == 2 ) {
       subpaths[1].operation = ShapeOperation.SHAPEXOR;
     }
